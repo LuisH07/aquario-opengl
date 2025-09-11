@@ -8,12 +8,15 @@
 typedef struct {
     float posX, posY, posZ;
     float dirX, dirY, dirZ;
+    float prevX, prevY, prevZ;
     float velocidade;
     float tamanho;
     float rotacao;
     GLuint textura;
     float corR, corG, corB;
     float anguloCauda;
+    float raioColisao;
+    int id;
 } Peixe;
 
 #define LARGURA_AQUARIO 5.0f
