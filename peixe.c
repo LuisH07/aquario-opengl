@@ -42,10 +42,33 @@ void atualizarPeixes() {
 
 void movimentoOciosoPeixes(){
     static float tempoAnim = 0.0f;
-    tempoAnim += 0.1f; // Controla a velocidade da oscilação da cauda
+    tempoAnim += 0.1f;
 
+    //estruturas da cena
+    float x_abacaxi = (LARGURA_AQUARIO/2 * 0.6f);
+    float z_abacaxi = - (PROFUNDIDADE_AQUARIO/2 * 0.7f);
+    float base_abacaxi = -2.0f + 0.35f;
+    float raio_abacaxi = 0.6f * 0.5f; //raio da esfera escalada
+
+    float x_pedra = - (LARGURA_AQUARIO/2 * 0.6f);
+    float z_pedra = - (PROFUNDIDADE_AQUARIO/2 * 0.7f);
+    float base_pedra = -2.0f;
+    float raio_pedra = 1.0f * 0.4f; //raio da esfera escalada
+
+    float x_moai = (LARGURA_AQUARIO/2 * 0.01f);
+    float z_moai = - (PROFUNDIDADE_AQUARIO/2 * 0.7f);
+    float base_moai = -2.0f;
+    float altura_moai = 1.6f * 0.6f; //altura do cilindro escalado
+    float raio_base_moai = 0.8f * 0.4f; //raio base do cilindro
+    float raio_topo_moai = 0.6f * 0.4f; //raio topo do cilindro
+
+    //guarda as posições anteriores e atualizar movimentos
     for(int i = 0; i < numPeixes; i++){
         Peixe* p = &peixes[i];
+        
+        p->prevX = p->posX;
+        p->prevY = p->posY;
+        p->prevZ = p->posZ;
 
         float margem = p->tamanho / 2.0f;
         float x_min = -LARGURA_AQUARIO/2 + margem;
@@ -85,14 +108,12 @@ void movimentoOciosoPeixes(){
                 p->dirY /= magnitude;
                 p->dirZ /= magnitude;
             }
-            
         }
 
         p->posX += p->dirX * p->velocidade;
         p->posY += p->dirY * p->velocidade;
         p->posZ += p->dirZ * p->velocidade;
 
-        // Se sair da área de animação ociosa, volta para o centro
         if (p->posX < x_min_ocioso || p->posX > x_max_ocioso ||
             p->posY < y_min_ocioso || p->posY > y_max_ocioso ||
             p->posZ < z_min_ocioso || p->posZ > z_max_ocioso) {
@@ -101,7 +122,6 @@ void movimentoOciosoPeixes(){
             p->dirY = (p->posY - (y_min_ocioso + y_max_ocioso)/2) > 0 ? -1 : 1;
             p->dirZ = (p->posZ - (z_min_ocioso + z_max_ocioso)/2) > 0 ? -1 : 1;
             
-            // Normalização
             float magnitude = sqrt(p->dirX * p->dirX + p->dirY * p->dirY + p->dirZ * p->dirZ);
             if (magnitude > 0) {
                 p->dirX /= magnitude;
@@ -110,7 +130,7 @@ void movimentoOciosoPeixes(){
             }
         }
 
-        // Limites
+        //verificar colisão aquário
         if (p->posX < x_min) { p->posX = x_min; p->dirX = fabs(p->dirX); }
         if (p->posX > x_max) { p->posX = x_max; p->dirX = -fabs(p->dirX); }
         if (p->posY < y_min) { p->posY = y_min; p->dirY = fabs(p->dirY); }
@@ -118,12 +138,196 @@ void movimentoOciosoPeixes(){
         if (p->posZ < z_min) { p->posZ = z_min; p->dirZ = fabs(p->dirZ); }
         if (p->posZ > z_max) { p->posZ = z_max; p->dirZ = -fabs(p->dirZ); }
 
+        //verificar colisão casa do bob esponja
+        float dx_abacaxi = p->posX - x_abacaxi;
+        float dy_abacaxi = p->posY - (base_abacaxi + raio_abacaxi);
+        float dz_abacaxi = p->posZ - z_abacaxi;
+        float dist_abacaxi_sq = dx_abacaxi*dx_abacaxi + dy_abacaxi*dy_abacaxi + dz_abacaxi*dz_abacaxi;
+        
+        if (dist_abacaxi_sq < (raio_abacaxi + p->raioColisao) * (raio_abacaxi + p->raioColisao)) {
+            float dist_abacaxi = sqrt(dist_abacaxi_sq);
+            float overlap = (raio_abacaxi + p->raioColisao) - dist_abacaxi;
+            
+            dx_abacaxi /= dist_abacaxi;
+            dy_abacaxi /= dist_abacaxi;
+            dz_abacaxi /= dist_abacaxi;
+            
+            p->posX += dx_abacaxi * overlap;
+            p->posY += dy_abacaxi * overlap;
+            p->posZ += dz_abacaxi * overlap;
+            
+            float dot = p->dirX * dx_abacaxi + p->dirY * dy_abacaxi + p->dirZ * dz_abacaxi;
+            if (dot > 0) {
+                p->dirX -= 2.0f * dot * dx_abacaxi;
+                p->dirY -= 2.0f * dot * dy_abacaxi;
+                p->dirZ -= 2.0f * dot * dz_abacaxi;
+                
+                float mag = sqrt(p->dirX*p->dirX + p->dirY*p->dirY + p->dirZ*p->dirZ);
+                if (mag > 0) {
+                    p->dirX /= mag;
+                    p->dirY /= mag;
+                    p->dirZ /= mag;
+                }
+            }
+        }
+
+        //verificar colisão casa do patrick
+        float dx_pedra = p->posX - x_pedra;
+        float dy_pedra = p->posY - (base_pedra + raio_pedra);
+        float dz_pedra = p->posZ - z_pedra;
+        float dist_pedra_sq = dx_pedra*dx_pedra + dy_pedra*dy_pedra + dz_pedra*dz_pedra;
+        
+        if (dist_pedra_sq < (raio_pedra + p->raioColisao) * (raio_pedra + p->raioColisao)) {
+            float dist_pedra = sqrt(dist_pedra_sq);
+            float overlap = (raio_pedra + p->raioColisao) - dist_pedra;
+            
+            dx_pedra /= dist_pedra;
+            dy_pedra /= dist_pedra;
+            dz_pedra /= dist_pedra;
+            
+            p->posX += dx_pedra * overlap;
+            p->posY += dy_pedra * overlap;
+            p->posZ += dz_pedra * overlap;
+            
+            float dot = p->dirX * dx_pedra + p->dirY * dy_pedra + p->dirZ * dz_pedra;
+            if (dot > 0) {
+                p->dirX -= 2.0f * dot * dx_pedra;
+                p->dirY -= 2.0f * dot * dy_pedra;
+                p->dirZ -= 2.0f * dot * dz_pedra;
+                
+                float mag = sqrt(p->dirX*p->dirX + p->dirY*p->dirY + p->dirZ*p->dirZ);
+                if (mag > 0) {
+                    p->dirX /= mag;
+                    p->dirY /= mag;
+                    p->dirZ /= mag;
+                }
+            }
+        }
+
+        //verificar colisão casa do lula molusco
+        float dx_moai = p->posX - x_moai;
+        float dz_moai = p->posZ - z_moai;
+        float dist_horizontal_moai = sqrt(dx_moai*dx_moai + dz_moai*dz_moai);
+        
+        //raio interpolado baseado na altura
+        float altura_relativa = p->posY - base_moai;
+        if (altura_relativa >= 0 && altura_relativa <= altura_moai) {
+            float raio_interpolado = raio_base_moai + (raio_topo_moai - raio_base_moai) * (altura_relativa / altura_moai);
+            
+            if (dist_horizontal_moai < (raio_interpolado + p->raioColisao)) {
+                float overlap = (raio_interpolado + p->raioColisao) - dist_horizontal_moai;
+                
+                if (dist_horizontal_moai > 0) {
+                    dx_moai /= dist_horizontal_moai;
+                    dz_moai /= dist_horizontal_moai;
+                } else {
+                    dx_moai = 1.0f;
+                    dz_moai = 0.0f;
+                }
+                
+                p->posX += dx_moai * overlap;
+                p->posZ += dz_moai * overlap;
+                
+                float dot_horizontal = p->dirX * dx_moai + p->dirZ * dz_moai;
+                if (dot_horizontal > 0) {
+                    p->dirX -= 2.0f * dot_horizontal * dx_moai;
+                    p->dirZ -= 2.0f * dot_horizontal * dz_moai;
+                    
+                    float mag = sqrt(p->dirX*p->dirX + p->dirY*p->dirY + p->dirZ*p->dirZ);
+                    if (mag > 0) {
+                        p->dirX /= mag;
+                        p->dirY /= mag;
+                        p->dirZ /= mag;
+                    }
+                }
+            }
+        }
+
         if (p->dirX != 0 || p->dirZ != 0) {
             p->rotacao = atan2f(-p->dirX, -p->dirZ) * (180.0f / M_PI);
         }
 
         p->anguloCauda = 10.0f * sin(tempoAnim);
     }
+
+    //colisões entre os peixes
+    for(int i = 0; i < numPeixes; i++){
+        for(int j = i + 1; j < numPeixes; j++){
+            Peixe* p1 = &peixes[i];
+            Peixe* p2 = &peixes[j];
+            
+            float dx = p1->posX - p2->posX;
+            float dy = p1->posY - p2->posY;
+            float dz = p1->posZ - p2->posZ;
+            float distanciaSq = dx*dx + dy*dy + dz*dz;
+            float somaRaios = p1->raioColisao + p2->raioColisao;
+            float somaRaiosSq = somaRaios * somaRaios;
+            
+            if (distanciaSq < somaRaiosSq && distanciaSq > 0.0001f) {
+                float distancia = sqrt(distanciaSq);
+                
+                dx /= distancia;
+                dy /= distancia;
+                dz /= distancia;
+                
+                float overlap = somaRaios - distancia;
+                
+                float mover = overlap * 0.5f;
+                p1->posX += dx * mover;
+                p1->posY += dy * mover;
+                p1->posZ += dz * mover;
+                
+                p2->posX -= dx * mover;
+                p2->posY -= dy * mover;
+                p2->posZ -= dz * mover;
+                
+                if (rand() % 100 < 30) {
+                    float dot1 = p1->dirX * dx + p1->dirY * dy + p1->dirZ * dz;
+                    float dot2 = p2->dirX * (-dx) + p2->dirY * (-dy) + p2->dirZ * (-dz);
+                    
+                    if (dot1 > 0) {
+                        p1->dirX -= 1.8f * dot1 * dx;
+                        p1->dirY -= 1.8f * dot1 * dy;
+                        p1->dirZ -= 1.8f * dot1 * dz;
+                    }
+                    
+                    if (dot2 > 0) {
+                        p2->dirX -= 1.8f * dot2 * (-dx);
+                        p2->dirY -= 1.8f * dot2 * (-dy);
+                        p2->dirZ -= 1.8f * dot2 * (-dz);
+                    }
+                    
+                    p1->dirY += (rand() % 100) / 500.0f - 0.1f;
+                    p2->dirY += (rand() % 100) / 500.0f - 0.1f;
+                    
+                    float mag1 = sqrt(p1->dirX*p1->dirX + p1->dirY*p1->dirY + p1->dirZ*p1->dirZ);
+                    float mag2 = sqrt(p2->dirX*p2->dirX + p2->dirY*p2->dirY + p2->dirZ*p2->dirZ);
+                    
+                    if (mag1 > 0) {
+                        p1->dirX /= mag1;
+                        p1->dirY /= mag1;
+                        p1->dirZ /= mag1;
+                    }
+                    if (mag2 > 0) {
+                        p2->dirX /= mag2;
+                        p2->dirY /= mag2;
+                        p2->dirZ /= mag2;
+                    }
+                }
+                
+                p1->velocidade *= 0.95f;
+                p2->velocidade *= 0.95f;
+            }
+        }
+    }
+    
+    for(int i = 0; i < numPeixes; i++){
+        Peixe* p = &peixes[i];
+        if (p->velocidade < 0.0015f) {
+            p->velocidade += 0.0001f;
+        }
+    }
+
     glutPostRedisplay();
 }
 
@@ -222,12 +426,15 @@ void adicionarPeixe() {
     }
 
     peixes = novoArray;
-    Peixe* novoPeixe = &peixes[numPeixes];
+    Peixe* novoPeixe = &peixes[numPeixes]; 
 
     float r = (float)rand() / (float)RAND_MAX;
     novoPeixe->velocidade = 0.0015f + r * 0.003f;
     r = (float)rand() / (float)RAND_MAX;
     novoPeixe->tamanho = 0.2f + r * 0.3f;
+
+    novoPeixe->id = numPeixes;
+    novoPeixe->raioColisao = novoPeixe->tamanho * 0.6f;
 
     float margemX = novoPeixe->tamanho / 2.0f + 0.05f;
     float margemZ = novoPeixe->tamanho / 2.0f + 0.05f;
